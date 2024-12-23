@@ -1,50 +1,97 @@
-const axios = require("axios");
-const baseApiUrl = async () => {
-  const base = await axios.get(
-    `https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`,
-  );
-  return base.data.api;
-};
-
+const axios = require('axios');
+const fs = require('fs-extra');
+ 
+const models = [
+  "fluxv2"
+];
+ 
 module.exports.config = {
   name: "flux",
-  version: "2.0",
-  hasPermission: 2,
-  credits: "Dipto",
-  description: "Generate images with Flux.1 Pro",
-  commandCategory: "𝗜𝗠𝗔𝗚𝗘 𝗚𝗘𝗡𝗘𝗥𝗔𝗧𝗢𝗥",
-  usages: "{pn} [prompt] --ratio 1024x1024\n{pn} [prompt]",
-  cooldowns: 15,
+  version: "1.0.0",
+  permission: 0,
+  credits: "nazrul",
+  usePrefix: true,
+  commandCategory: "no",
+  description: "get user id.",
+  category: "art",
+  cooldowns: 5
 };
-
-module.exports.run = async ({ event, args, api }) => {
+ 
+module.exports.run = async function ({ api, event, args }) {
   try {
-  const prompt = args.join(" ");
-  /*let prompt2, ratio;
-  if (prompt.includes("--ratio")) {
-    const parts = prompt.split("--ratio");
-    prompt2 = parts[0].trim();
-    ratio = parts[1].trim();
-  } else {
-    prompt2 = prompt;
-    ratio = "1024x1024";
-  }*/
-    const startTime = new Date().getTime();
-    const ok = api.sendMessage('wait baby <😘', event.threadID, event.messageID);
-    api.setMessageReaction("⌛", event.messageID, (err) => {}, true);
-    const apiUrl = `${await baseApiUrl()}/flux11?prompt=${prompt}`;
-
-    api.setMessageReaction("✅", event.messageID, (err) => {}, true);
-     api.unsendMessage(ok.messageID)
-    const attachment = (await axios.get(apiUrl, { responseType: "stream" }).data;
-    const endTime = new Date().getTime();
-    await api.sendMessage({
-          body: `Here's your image\nModel Name: "Flux.1 Pro"\nTime Taken: ${(endTime - startTime) / 1000} second/s`, 
-          attachment
-      }, event.threadID, event.messageID);
-  } catch (e) {
-    console.log(e);
-    api.sendMessage("Error: " + e.message, event.threadID, event.messageID);
+    const { threadID = "defaultThreadID", messageID = "defaultMessageID" } = event || {};
+    let prompt = args.join(' ');
+    let model = "0";
+ 
+    if (prompt.includes('-')) {
+      const parts = prompt.split('-');
+      prompt = parts[0].trim();
+ 
+      const parsedModel = parseInt(parts[1].trim());
+      if (!isNaN(parsedModel) && parsedModel >= 0 && parsedModel < models.length) {
+        model = parsedModel.toString();
+      } else {
+        return api.sendMessage(
+          '❗ 𝘸𝘳𝘰𝘯𝘨 𝘱𝘳𝘰𝘮𝘱𝘵. ',
+          threadID,
+          messageID
+        );
+      }
+    } else if (!prompt) {
+      const modelsList = models.map((model, index) => `𝘚𝘵𝘢𝘺 𝘞𝘪𝘵𝘩 𝘛𝘢𝘯𝘷𝘪𝘳 𝘉𝘰𝘵`).join('\n');
+      return api.sendMessage(
+        '[🤍] 𝘱𝘳𝘰𝘷𝘪𝘥𝘦 𝘺𝘰𝘶𝘳 𝘱𝘳𝘰𝘮𝘰𝘵𝘦\n\n');
+    }
+ 
+    const processingMessage = await api.sendMessage(
+      '[🤍] 𝘐𝘮𝘢𝘨𝘦 𝘨𝘦𝘯𝘦𝘳𝘢𝘵𝘪𝘯𝘨,  𝘸𝘢𝘪𝘵...',
+      threadID,
+      null,
+      messageID
+    );
+ 
+    const API = `https://www.noobs-api.000.pe/dipto/flux11?prompt=${prompt}`;
+ 
+    const timeout = 20000;
+    const imageStreamPromise = axios.get(API, { responseType: 'arraybuffer' });
+ 
+    try {
+      const imageStream = await Promise.race([
+        imageStreamPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => {
+            api.unsendMessage(processingMessage.messageID);
+            reject(new Error('𝘛𝘪𝘮𝘦 𝘖𝘶𝘵, 𝘛𝘳𝘺 𝘈𝘨𝘢𝘪𝘯'));
+          }, timeout)
+        ),
+      ]);
+ 
+      if (imageStream) {
+        const path = __dirname + `/cache/flux2.png`;
+        fs.writeFileSync(path, Buffer.from(imageStream.data, 'utf-8'));
+ 
+        api.sendMessage(
+          {
+            attachment: fs.createReadStream(path),
+          },
+          threadID,
+          () => {
+            fs.unlinkSync(path);
+            api.unsendMessage(processingMessage.messageID);
+          },
+          messageID
+        );
+      } else {
+ 
+        api.sendMessage('Something wrong', threadID, messageID);
+      }
+    } catch (error) {
+ 
+      console.error(error);
+      api.sendMessage('Something wrong', threadID, messageID);
+    }
+  } catch (error) {
+    console.error(error);
+    api.sendMessage('Something wrong', threadID, messageID);
   }
 };
-
