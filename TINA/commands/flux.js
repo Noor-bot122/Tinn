@@ -50,7 +50,7 @@ module.exports.run = async function ({ api, event, args }) {
       messageID
     );
  
-    const API = `https://www.noobs-api.000.pe/dipto/flux11?prompt=${prompt}`;
+    const API = `https://www.noobs-api.000.pe/dipto/flux11?prompt=${encodeURIComponent(prompt)}`;
  
     const timeout = 20000;
     const imageStreamPromise = axios.get(API, { responseType: 'arraybuffer' });
